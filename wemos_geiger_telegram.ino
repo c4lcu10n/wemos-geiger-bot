@@ -40,10 +40,10 @@ volatile byte interruptCounter = 0;
 int numberOfInterrupts = 0;
 
 //Variablen für Telegram//
-#define BOT_TOKEN " "               //Bot Token hier eingeben. Ohne 'bot' Vorlauf.
-#define CHAT_ID " "                 //Chat ID angeben. Es können weitere Chat IDs hinzugefügt werden.
+#define BOT_TOKEN " "               //Bot Token hier eingeben. Ohne 'bot' Abschnitt.
+#define CHAT_ID " "                 //Chat ID angeben. Es können weitere Chat IDs definiert werden.
 bool disable_notification = true;
-char standort = " ";                //Standort kann Angeben falls gewünscht.
+char standort = " ";                //Standort Angeben falls gewünscht.
 unsigned long botMillis;
 int initialnachricht = 0;
 
