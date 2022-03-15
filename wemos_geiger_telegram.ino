@@ -8,8 +8,12 @@
 //Bibliothek für WiFi
 #include <ESP8266WiFi.h>
 #include <WiFiClientSecure.h>
+#include <WiFiUdp.h>
 //Bibliothek für Telegram Bot
 #include <UniversalTelegramBot.h>
+//Bibliothek für Zeitserver
+#include <NTPClient.h>
+
 
 /////////////////////////////////////////////////
 ////////////////Variablen////////////////////////
@@ -43,9 +47,17 @@ int numberOfInterrupts = 0;
 #define BOT_TOKEN " "               //Bot Token hier eingeben. Ohne 'bot' Abschnitt.
 #define CHAT_ID " "                 //Chat ID angeben. Es können weitere Chat IDs definiert werden.
 bool disable_notification = true;
-char standort = " ";                //Standort Angeben falls gewünscht.
+#define standort "Stadt, Bundesland"                //Standort Angeben falls gewünscht.
 unsigned long botMillis;
 int initialnachricht = 0;
+int botnachricht1 = 0;
+int botnachricht2 = 0;
+int botnachricht3 = 0;
+int botnachricht4 = 0;
+
+//Variablen für Zeitserver//
+String formattedDate;
+String timeStamp;
 
 /////////////////////////////////////////////////
 ////////////////Voreinstellungen/////////////////
@@ -55,6 +67,10 @@ int initialnachricht = 0;
 //Wifi Einstellungen//
 X509List cert(TELEGRAM_CERTIFICATE_ROOT);
 WiFiClientSecure client;
+
+//Zeitserver Einstellungen//
+WiFiUDP ntpUDP;
+NTPClient timeClient(ntpUDP);
 
 //Telegram Bot Einstellungen//
 UniversalTelegramBot bot(BOT_TOKEN, client);
@@ -107,6 +123,34 @@ void setup(){
 
   client.setInsecure();
 
+  //Verbindung zum Zeitserver
+  timeClient.begin();
+  timeClient.setTimeOffset(3600);
+  timeClient.update();
+
+  formattedDate = timeClient.getFormattedTime();
+  int splitT = formattedDate.indexOf("T");
+  timeStamp = formattedDate.substring(splitT+1, formattedDate.length()-1);
+  String stunde = timeStamp;
+  Serial.println(timeStamp);
+  
+  if (stunde < "07:00:00"){
+    botnachricht4 = botnachricht4 + 1;
+  }
+  if (stunde > "07:00:01" && timeStamp < "12:00:00"){
+    botnachricht1 = botnachricht1 + 1;
+  }
+  if (stunde > "12:00:01" && timeStamp < "17:00:00"){
+    botnachricht2 = botnachricht2 + 1;
+  }
+  if (stunde > "17:00:01" && timeStamp < "22:00:00"){
+    botnachricht3 = botnachricht3 + 1;
+  }
+  if (stunde > "22:00:01"){
+    botnachricht4 = botnachricht4 + 1;
+  }
+
+  
   //Verbindungsbestätigung des Bots//
   bot.sendMessage(CHAT_ID, "Bot ist online.", "", 0, disable_notification);
   delay(500);
@@ -129,6 +173,13 @@ void loop(){
     usvcount = usvcount + 1;
     usvmeridian = usvmeridian + usv;
   }
+  
+  //Zeitabgleich
+  timeClient.update();
+  formattedDate = timeClient.getFormattedTime();
+  int splitT = formattedDate.indexOf("T");
+  timeStamp = formattedDate.substring(splitT+1, formattedDate.length()-1);
+  String stunde = timeStamp;
 
   //Telegram Bot//
   //Initiale Nachricht//
@@ -155,13 +206,45 @@ void loop(){
     usvmeridian = 0;
   }
 
-  //Standard Nachricht alle 6 Stunden//
-  if (millis() - botMillis > 21600000) {
+  //Standard Nachrichten zu bestimmten Zeiten
+  if ( stunde == "07:00:0" && botnachricht1 == 0 ) {
     botMillis = millis();
     usvmeridian = usvmeridian / usvcount;
-    bot.sendMessage(CHAT_ID, "Der aktuelle Wert in " +String(standort) " beträgt " +String(usvmeridian) + " µSv/h", "", 0 , disable_notification);
+    bot.sendMessage(CHAT_ID, "Der aktuelle Wert in " +String(standort)+ " beträgt " +String(usvmeridian) + " µSv/h", "", 0 , disable_notification);
     usvcount = 0;
     usvmeridian = 0;
+    botnachricht1 = botnachricht1 + 1;
+    botnachricht4 = botnachricht4 -1;
+  }
+
+  if ( stunde == "12:00:0" && botnachricht2 == 0 ) {
+    botMillis = millis();
+    usvmeridian = usvmeridian / usvcount;
+    bot.sendMessage(CHAT_ID, "Der aktuelle Wert in " +String(standort)+ " beträgt " +String(usvmeridian) + " µSv/h", "", 0 , disable_notification);
+    usvcount = 0;
+    usvmeridian = 0;
+    botnachricht2 = botnachricht2 + 1;
+    botnachricht1 = botnachricht1 - 1;
+  }
+
+  if ( stunde == "17:00:0" && botnachricht3 == 0) {
+    botMillis = millis();
+    usvmeridian = usvmeridian / usvcount;
+    bot.sendMessage(CHAT_ID, "Der aktuelle Wert in " +String(standort) + " beträgt " +String(usvmeridian) + " µSv/h", "", 0 , disable_notification);
+    usvcount = 0;
+    usvmeridian = 0;
+    botnachricht3 = botnachricht3 + 1;
+    botnachricht2 = botnachricht2 - 1;
+  }
+
+  if ( stunde == "22:00:0" && botnachricht4 == 0 ){
+    botMillis = millis();
+    usvmeridian = usvmeridian / usvcount;
+    bot.sendMessage(CHAT_ID, "Der aktuelle Wert in " +String(standort)+ " beträgt " +String(usvmeridian) + " µSv/h", "", 0 , disable_notification);
+    usvcount = 0;
+    usvmeridian = 0;
+    botnachricht4 = botnachricht4 + 1;
+    botnachricht3 = botnachricht3 -1;
   }
 
 }
